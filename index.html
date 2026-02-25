@@ -102,7 +102,6 @@ loadApp(0);
 
   body.a11y-grayscale { filter: grayscale(100%); }
   body.a11y-high-contrast { filter: contrast(125%) brightness(1.1); }
-  body.a11y-high-contrast .card, body.a11y-high-contrast .header { border: 2px solid #000; }
   body.a11y-readable-font { font-family: system-ui, -apple-system, sans-serif !important; }
   body.a11y-highlight-links a { outline: 3px solid #F59E0B !important; text-decoration: underline !important; }
 
@@ -286,6 +285,13 @@ loadApp(0);
   .workload-bar.warning { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
   .workload-bar.violation { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
 
+  .edit-btn {
+    background: #F1F5F9; color: #64748B; border: none; border-radius: 8px;
+    padding: 6px; display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .edit-btn:active { transform: scale(0.9); }
+
   @media (min-width: 768px) {
     .header-inner { padding: calc(var(--safe-top) + 16px) 32px 16px; }
     .a11y-fab { left: auto; right: calc(50% + 310px); }
@@ -329,11 +335,13 @@ const TRANSLATIONS = {
     noTasks: "אין משימות קרובות!",
     addNotice: "📢 הודעה חדשה",
     addExam: "➕ הוספת מבחן / עבודה",
+    editExam: "📝 עריכת משימה",
     scheduleTitle: "מערכת שעות",
     eventsTitle: "אירועים ומפגשים",
     homeroomLabel: "מחנכת הכיתה",
     searchStudent: "🔍 חיפוש תלמיד...",
     add: "הוסף",
+    save: "שמור שינויים",
     logout: "להתנתק?",
     days: ['ראשון','שני','שלישי','רביעי','חמישי','שישי'],
     months: ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'],
@@ -386,11 +394,13 @@ const TRANSLATIONS = {
     noTasks: "Нет заданий!",
     addNotice: "📢 Новое объявление",
     addExam: "➕ Добавить тест/работу",
+    editExam: "📝 Редактировать",
     scheduleTitle: "Расписание уроков",
     eventsTitle: "События и встречи",
     homeroomLabel: "Классный руководитель",
     searchStudent: "🔍 Поиск ученика...",
     add: "Добавить",
+    save: "Сохранить",
     logout: "Выйти?",
     days: ['Вс','Пн','Вт','Ср','Чт','Пт'],
     months: ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'],
@@ -520,7 +530,8 @@ function Icon({ name, size=20, color='currentColor', style={} }) {
     trash: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={style}><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>,
     social: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={style}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>,
     a11y: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={style}><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>,
-    globe: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={style}><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+    globe: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={style}><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>,
+    edit: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={style}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
   };
   return icons[name] || null;
 }
@@ -545,6 +556,7 @@ function App() {
   const [showAddNotice, setShowAddNotice] = useState(false);
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [showAddContact, setShowAddContact] = useState(false);
+  const [editingExam, setEditingExam] = useState(null);
   const [search, setSearch] = useState('');
   const [isTranslating, setIsTranslating] = useState(false);
   const [showWorkloadDetails, setShowWorkloadDetails] = useState(false);
@@ -559,7 +571,7 @@ function App() {
     document.documentElement.style.fontSize = `${a11y.fontSize}%`;
   }, [a11y]);
 
-  const [exams, addExamFB, delExam, , examsReady] = useFireCollection('exams');
+  const [exams, addExamFB, delExam, updExam, examsReady] = useFireCollection('exams');
   const [notices, addNoticeFB, delNotice, , noticesReady] = useFireCollection('notices');
   const [contacts, addContact, delContact, , contactsReady] = useFireCollection('contacts');
   const [events, addEventFB, delEvent, , eventsReady] = useFireCollection('events');
@@ -608,6 +620,7 @@ function App() {
 
   const getSubjectLabel = (s) => (lang === 'ru' && SUBJECT_MAP[s]) ? SUBJECT_MAP[s] : s;
 
+  // New Add wrappers with translation
   const handleAddNotice = async (text) => {
     setIsTranslating(true);
     const translated = await autoTranslate(text, lang === 'he' ? 'ru' : 'he');
@@ -620,16 +633,23 @@ function App() {
     setShowAddNotice(false);
   };
 
-  const handleAddExam = async (item) => {
+  const handleSaveExam = async (item) => {
     setIsTranslating(true);
     const translated = await autoTranslate(item.details, lang === 'he' ? 'ru' : 'he');
-    await addExamFB({
+    const data = {
       ...item,
       details_he: lang === 'he' ? item.details : translated,
       details_ru: lang === 'ru' ? item.details : translated,
-    });
+    };
+
+    if (editingExam) {
+      await updExam(editingExam.id, data);
+      setEditingExam(null);
+    } else {
+      await addExamFB(data);
+      setShowAddExam(false);
+    }
     setIsTranslating(false);
-    setShowAddExam(false);
   };
 
   const handleAddEvent = async (ev) => {
@@ -667,21 +687,11 @@ function App() {
               </div>
             </div>
             <div style={{display:'flex', gap:6, alignItems:'center'}}>
-              {/* Language Switcher Button */}
               <button 
                 onClick={() => setLang(lang === 'he' ? 'ru' : 'he')} 
                 style={{
-                  background: 'white', 
-                  border: '1.5px solid var(--indigo-mid)', 
-                  borderRadius: 10, 
-                  padding: '6px 10px', 
-                  fontSize: 12, 
-                  fontWeight: 900, 
-                  color: 'var(--indigo)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  boxShadow: '0 2px 5px rgba(0,0,0,0.05)'
+                  background: 'white', border: '1.5px solid var(--indigo-mid)', borderRadius: 10, padding: '6px 10px', fontSize: 12, fontWeight: 900, color: 'var(--indigo)',
+                  display: 'flex', alignItems: 'center', gap: 4, boxShadow: '0 2px 5px rgba(0,0,0,0.05)'
                 }}
               >
                 <Icon name="globe" size={14} />
@@ -728,10 +738,7 @@ function App() {
             </div>
 
             {/* Workload Bar */}
-            <div 
-              className={`workload-bar ${workloadInfo.status}`}
-              onClick={() => setShowWorkloadDetails(!showWorkloadDetails)}
-            >
+            <div className={`workload-bar ${workloadInfo.status}`} onClick={() => setShowWorkloadDetails(!showWorkloadDetails)}>
               <div style={{display:'flex', alignItems:'center', gap:8}}>
                 <Icon name="calendar" size={18} />
                 <div>
@@ -775,7 +782,12 @@ function App() {
                       </div>
                       <div style={{fontSize:13, fontWeight:600}}>{ex[`details_${lang}`] || ex.details}</div>
                     </div>
-                    {editMode && <button onClick={()=>delExam(ex.id)} style={{border:'none',background:'none'}}>🗑️</button>}
+                    {editMode && (
+                      <div style={{display:'flex', gap:6}}>
+                        <button className="edit-btn" onClick={() => setEditingExam(ex)}><Icon name="edit" size={16} /></button>
+                        <button className="edit-btn" style={{color:'#EF4444'}} onClick={()=>delExam(ex.id)}><Icon name="trash" size={16} /></button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -900,13 +912,15 @@ function App() {
           </button>
       </div></div>}
       
-      {showAddExam && <div className="modal-overlay" onClick={()=>setShowAddExam(false)}><div className="modal-sheet" onClick={e=>e.stopPropagation()}>
-          <div style={{fontWeight:900,marginBottom:15}}>{t.addExam}</div>
-          <select className="input-field" id="eSub">{TRANSLATIONS.he.subjectsList.map((s,i)=><option key={s} value={s}>{t.subjectsList[i]}</option>)}</select>
-          <input type="date" className="input-field" id="eDate" style={{marginTop:10}}/>
-          <input className="input-field" id="eDet" placeholder="Details" style={{marginTop:10}}/>
-          <button className="btn-primary" style={{marginTop:10}} onClick={()=>{handleAddExam({subject:document.getElementById('eSub').value,date:document.getElementById('eDate').value,details:document.getElementById('eDet').value,type:'exam'})}} disabled={isTranslating}>
-            {isTranslating ? t.translating : t.add}
+      {(showAddExam || editingExam) && <div className="modal-overlay" onClick={()=>{setShowAddExam(false); setEditingExam(null)}}><div className="modal-sheet" onClick={e=>e.stopPropagation()}>
+          <div style={{fontWeight:900,marginBottom:15}}>{editingExam ? t.editExam : t.addExam}</div>
+          <select className="input-field" id="eSub" defaultValue={editingExam?.subject || ''}>
+            {TRANSLATIONS.he.subjectsList.map((s,i)=><option key={s} value={s}>{t.subjectsList[i]}</option>)}
+          </select>
+          <input type="date" className="input-field" id="eDate" style={{marginTop:10}} defaultValue={editingExam?.date || ''}/>
+          <input className="input-field" id="eDet" placeholder="Details" style={{marginTop:10}} defaultValue={editingExam ? (editingExam[`details_${lang}`] || editingExam.details) : ''}/>
+          <button className="btn-primary" style={{marginTop:10}} onClick={()=>{handleSaveExam({subject:document.getElementById('eSub').value,date:document.getElementById('eDate').value,details:document.getElementById('eDet').value,type:'exam'})}} disabled={isTranslating}>
+            {isTranslating ? t.translating : (editingExam ? t.save : t.add)}
           </button>
       </div></div>}
 
