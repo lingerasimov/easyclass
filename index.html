@@ -95,6 +95,7 @@ loadApp(0);
     --teal: #14B8A6; --teal-light: #CCFBF1;
     --rose: #F43F5E; --rose-light: #FFE4E6;
     --amber: #F59E0B;
+    --rosegold: #B76E79;
     --slate: #64748B; --slate-light: #F1F5F9;
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -268,18 +269,10 @@ loadApp(0);
   }
   .a11y-option.active { background: var(--indigo-light); border-color: var(--indigo); color: var(--indigo); }
 
-  /* Workload Bar Styling */
   .workload-bar {
-    padding: 12px 16px;
-    border-radius: 16px;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.2s;
+    padding: 12px 16px; border-radius: 16px; margin-bottom: 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s;
   }
   .workload-bar.safe { background: var(--teal-light); color: #0f766e; border: 1px solid #99f6e4; }
   .workload-bar.warning { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
@@ -297,6 +290,21 @@ loadApp(0);
     padding: 6px 10px; display: flex; align-items: center; justify-content: center;
     transition: all 0.15s; text-decoration: none;
   }
+
+  /* Attachment UI */
+  .attach-row {
+    display: flex; gap: 10px; margin: 10px 0;
+  }
+  .attach-chip {
+    flex: 1; padding: 10px; border-radius: 12px; border: 1.5px dashed #e2e8f0;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 700; color: #64748b; background: #f8fafc;
+    cursor: pointer; transition: 0.2s;
+  }
+  .attach-chip.active {
+    border-color: var(--indigo); background: var(--indigo-light); color: var(--indigo);
+  }
+  .attach-chip:active { transform: scale(0.96); }
 
   @media (min-width: 768px) {
     .header-inner { padding: calc(var(--safe-top) + 16px) 32px 16px; }
@@ -371,7 +379,13 @@ const TRANSLATIONS = {
     clickForDetails: "לחצי לפרטים",
     loadFooter: "מקס' מבחן 1 ביום | 3 בשבוע",
     linkPlaceholder: "קישור (דרייב, תמונה וכו')",
-    openLink: "פתח קישור"
+    openLink: "פתח קישור",
+    attachFile: "העלאת קובץ",
+    attachDrive: "חיבור דרייב",
+    attachImg: "העלאת תמונה",
+    fileTooLarge: "הקובץ גדול מדי (מקסימום 500KB)",
+    linkPasted: "קישור הוגדר ✅",
+    fileAttached: "קובץ צורף ✅"
   },
   ru: {
     appName: "Easy Class",
@@ -432,7 +446,13 @@ const TRANSLATIONS = {
     clickForDetails: "Подробнее",
     loadFooter: "Макс: 1 тест в день | 3 в неделю",
     linkPlaceholder: "Ссылка (драйв, фото и т.д.)",
-    openLink: "Открыть ссылку"
+    openLink: "Открыть ссылку",
+    attachFile: "Файл",
+    attachDrive: "Google Drive",
+    attachImg: "Фото",
+    fileTooLarge: "Файл слишком велик (макс 500KB)",
+    linkPasted: "Ссылка добавлена ✅",
+    fileAttached: "Файл прикреплен ✅"
   }
 };
 
@@ -459,7 +479,7 @@ const PRESET_SCHEDULE = {
 // ---- TRANSLATION ENGINE ----
 async function autoTranslate(text, targetLang) {
   if (!text) return text;
-  const apiKey = ""; // Runtime key
+  const apiKey = ""; 
   const targetName = targetLang === 'ru' ? 'Russian' : 'Hebrew';
   const systemPrompt = `Translate the user content to ${targetName}. If the content is already in that language, keep it exactly as is. Return ONLY the translated text without any explanations.`;
   
@@ -542,7 +562,10 @@ function Icon({ name, size=20, color='currentColor', style={} }) {
     a11y: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={style}><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>,
     globe: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={style}><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>,
     edit: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={style}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
-    link: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={style}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+    link: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={style}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>,
+    file: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={style}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>,
+    image: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={style}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>,
+    drive: <svg width={size} height={size} viewBox="0 0 512 512" fill={color} style={style}><path d="M339.4 31.1L172.7 31.1 0 330.3 83.4 474.9 250.1 474.9 418.1 184.3z M214.7 101L318 101 478.1 378.3 374.8 378.3z M107.4 346.5L159.2 256.4 404.6 256.4 456.4 346.5z"/></svg>
   };
   return icons[name] || null;
 }
@@ -568,9 +591,14 @@ function App() {
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [showAddContact, setShowAddContact] = useState(false);
   const [editingExam, setEditingExam] = useState(null);
+  const [editingEvent, setEditingEvent] = useState(null);
   const [search, setSearch] = useState('');
   const [isTranslating, setIsTranslating] = useState(false);
   const [showWorkloadDetails, setShowWorkloadDetails] = useState(false);
+
+  // File handling state
+  const [tempAttachment, setTempAttachment] = useState(null);
+  const fileInputRef = useRef(null);
 
   const [a11y, setA11y] = useState(() => JSON.parse(localStorage.getItem('ec_a11y')) || { grayscale: false, highContrast: false, readableFont: false, highlightLinks: false, fontSize: 100 });
   useEffect(() => {
@@ -585,7 +613,7 @@ function App() {
   const [exams, addExamFB, delExam, updExam, examsReady] = useFireCollection('exams');
   const [notices, addNoticeFB, delNotice, , noticesReady] = useFireCollection('notices');
   const [contacts, addContact, delContact, , contactsReady] = useFireCollection('contacts');
-  const [events, addEventFB, delEvent, , eventsReady] = useFireCollection('events');
+  const [events, addEventFB, delEvent, updEvent, eventsReady] = useFireCollection('events');
   const [schedule, mergeSchedule] = useFireDoc('meta/schedule', {});
   const [meta] = useFireDoc('meta/settings', { homeroomPhone: '0526176593' });
 
@@ -595,28 +623,16 @@ function App() {
   const upcoming = exams.filter(e => new Date(e.date) >= today).sort((a,b) => new Date(a.date) - new Date(b.date));
   const filtered = activeSubject === 'all' ? upcoming : upcoming.filter(e => e.subject === activeSubject);
 
-  // ---- WORKLOAD LOGIC ----
   const workloadInfo = useMemo(() => {
     if (!exams.length) return { status: 'safe', label: t.loadOk, sub: t.loadNoViolation, count: 0 };
-    
     const weekFromNow = new Date(today); weekFromNow.setDate(today.getDate() + 7);
-    const thisWeekExams = exams.filter(e => {
-      const d = new Date(e.date);
-      return d >= today && d <= weekFromNow;
-    });
-
+    const thisWeekExams = exams.filter(e => { const d = new Date(e.date); return d >= today && d <= weekFromNow; });
     const dayCounts = {};
     thisWeekExams.forEach(e => { dayCounts[e.date] = (dayCounts[e.date] || 0) + 1; });
-    
     const hasDailyViolation = Object.values(dayCounts).some(c => c > 1);
     const weeklyCount = thisWeekExams.length;
-
-    if (hasDailyViolation || weeklyCount > 3) {
-      return { status: 'violation', label: t.loadViolation, sub: t.loadViolation, count: weeklyCount };
-    }
-    if (weeklyCount === 3) {
-      return { status: 'warning', label: t.loadWarning, sub: t.loadWarning.replace('{count}', '3'), count: weeklyCount };
-    }
+    if (hasDailyViolation || weeklyCount > 3) return { status: 'violation', label: t.loadViolation, sub: t.loadViolation, count: weeklyCount };
+    if (weeklyCount === 3) return { status: 'warning', label: t.loadWarning, sub: t.loadWarning.replace('{count}', '3'), count: weeklyCount };
     return { status: 'safe', label: t.loadOk, sub: t.loadNoViolation, count: weeklyCount };
   }, [exams, today, t]);
 
@@ -631,16 +647,20 @@ function App() {
 
   const getSubjectLabel = (s) => (lang === 'ru' && SUBJECT_MAP[s]) ? SUBJECT_MAP[s] : s;
 
-  const handleAddNotice = async (text) => {
-    setIsTranslating(true);
-    const translated = await autoTranslate(text, lang === 'he' ? 'ru' : 'he');
-    await addNoticeFB({
-      text_he: lang === 'he' ? text : translated,
-      text_ru: lang === 'ru' ? text : translated,
-      original: text
-    });
-    setIsTranslating(false);
-    setShowAddNotice(false);
+  // File Selection Logic
+  const onFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 500 * 1024) { alert(t.fileTooLarge); return; }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setTempAttachment({ 
+        type: file.type.startsWith('image/') ? 'image' : 'file', 
+        data: ev.target.result, 
+        name: file.name 
+      });
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSaveExam = async (item) => {
@@ -650,31 +670,40 @@ function App() {
       ...item,
       details_he: lang === 'he' ? item.details : translated,
       details_ru: lang === 'ru' ? item.details : translated,
+      attachment: tempAttachment || item.attachment || null
     };
-
-    if (editingExam) {
-      await updExam(editingExam.id, data);
-      setEditingExam(null);
-    } else {
-      await addExamFB(data);
-      setShowAddExam(false);
-    }
+    if (editingExam) await updExam(editingExam.id, data);
+    else await addExamFB(data);
+    
+    setEditingExam(null); setShowAddExam(false); setTempAttachment(null);
     setIsTranslating(false);
   };
 
-  const handleAddEvent = async (ev) => {
+  const handleSaveEvent = async (ev) => {
     setIsTranslating(true);
     const transTitle = await autoTranslate(ev.title, lang === 'he' ? 'ru' : 'he');
     const transDesc = await autoTranslate(ev.desc, lang === 'he' ? 'ru' : 'he');
-    await addEventFB({
+    const data = {
       ...ev,
       title_he: lang === 'he' ? ev.title : transTitle,
       title_ru: lang === 'ru' ? ev.title : transTitle,
       desc_he: lang === 'he' ? ev.desc : transDesc,
-      desc_ru: lang === 'ru' ? ev.desc : transDesc
-    });
+      desc_ru: lang === 'ru' ? ev.desc : transDesc,
+      attachment: tempAttachment || ev.attachment || null
+    };
+    if (editingEvent) await updEvent(editingEvent.id, data);
+    else await addEventFB(data);
+
+    setEditingEvent(null); setShowAddEvent(false); setTempAttachment(null);
     setIsTranslating(false);
-    setShowAddEvent(false);
+  };
+
+  const renderAttachmentIcon = (item) => {
+    const attach = item.attachment;
+    if (!attach && !item.link) return null;
+    if (item.link?.includes('drive.google.com')) return <Icon name="drive" size={14} color="var(--rosegold)" />;
+    if (attach?.type === 'image') return <Icon name="image" size={14} color="var(--rosegold)" />;
+    return <Icon name="file" size={14} color="var(--rosegold)" />;
   };
 
   if (!currentUser) return <AuthScreen t={t} lang={lang} setLang={setLang} onLogin={u => { localStorage.setItem('ec_user_v1', JSON.stringify(u)); setCurrentUser(u); }} />;
@@ -682,6 +711,8 @@ function App() {
 
   return (
     <div style={{minHeight:'100vh', paddingBottom:90}}>
+      <input type="file" ref={fileInputRef} style={{display:'none'}} onChange={onFileSelect} accept="image/*,.pdf,.doc,.docx" />
+      
       {/* FABs */}
       <button className="a11y-fab" onClick={() => setShowA11y(true)}><Icon name="a11y" size={24} color="white" /></button>
 
@@ -697,23 +728,11 @@ function App() {
               </div>
             </div>
             <div style={{display:'flex', gap:6, alignItems:'center'}}>
-              <button 
-                onClick={() => setLang(lang === 'he' ? 'ru' : 'he')} 
-                style={{
-                  background: 'white', border: '1.5px solid var(--indigo-mid)', borderRadius: 10, padding: '6px 10px', fontSize: 12, fontWeight: 900, color: 'var(--indigo)',
-                  display: 'flex', alignItems: 'center', gap: 4, boxShadow: '0 2px 5px rgba(0,0,0,0.05)'
-                }}
-              >
-                <Icon name="globe" size={14} />
-                {t.switchLang}
+              <button onClick={() => setLang(lang === 'he' ? 'ru' : 'he')} style={{background: 'white', border: '1.5px solid var(--indigo-mid)', borderRadius: 10, padding: '6px 10px', fontSize: 12, fontWeight: 900, color: 'var(--indigo)', display: 'flex', alignItems: 'center', gap: 4, boxShadow: '0 2px 5px rgba(0,0,0,0.05)'}}>
+                <Icon name="globe" size={14} />{t.switchLang}
               </button>
-              
-              <button onClick={() => setEditMode(!editMode)} style={{background: editMode?'var(--indigo)':'var(--indigo-light)', color: editMode?'white':'var(--indigo)', border:'none', borderRadius:10, padding:'6px 10px', fontSize:12, fontWeight:700}}>
-                {editMode ? t.close : 'Edit'}
-              </button>
-              <button onClick={() => { if(confirm(t.logout)) { localStorage.removeItem('ec_user_v1'); setCurrentUser(null); }}} style={{background:'#f1f5f9', border:'none', borderRadius:10, padding:'6px 10px', fontSize:12, fontWeight:700, color:'#64748b'}}>
-                 {currentUser.isDummy ? 'Tester' : currentUser.firstName}
-              </button>
+              <button onClick={() => setEditMode(!editMode)} style={{background: editMode?'var(--indigo)':'var(--indigo-light)', color: editMode?'white':'var(--indigo)', border:'none', borderRadius:10, padding:'6px 10px', fontSize:12, fontWeight:700}}>{editMode ? t.close : 'Edit'}</button>
+              <button onClick={() => { if(confirm(t.logout)) { localStorage.removeItem('ec_user_v1'); setCurrentUser(null); }}} style={{background:'#f1f5f9', border:'none', borderRadius:10, padding:'6px 10px', fontSize:12, fontWeight:700, color:'#64748b'}}>{currentUser.isDummy ? 'Tester' : currentUser.firstName}</button>
             </div>
           </div>
         </div>
@@ -735,55 +754,33 @@ function App() {
           <div className="fade-in">
             {/* Notices */}
             <div style={{marginBottom:20}}>
-              <div style={{display:'flex', justifyContent:'space-between', marginBottom:10}}>
-                <div style={{fontWeight:900, fontSize:16}}>🔔 {t.noticesTitle}</div>
-                {editMode && <button onClick={()=>setShowAddNotice(true)} style={{background:'var(--indigo)',border:'none',borderRadius:'50%',width:28,height:28,color:'white'}}>+</button>}
-              </div>
+              <div style={{display:'flex', justifyContent:'space-between', marginBottom:10}}><div style={{fontWeight:900, fontSize:16}}>🔔 {t.noticesTitle}</div>{editMode && <button onClick={()=>setShowAddNotice(true)} style={{background:'var(--indigo)',border:'none',borderRadius:'50%',width:28,height:28,color:'white'}}>+</button>}</div>
               {notices.slice(-3).reverse().map(n => (
-                <div key={n.id} className="notice-card">
-                  <div style={{fontSize:14, fontWeight:600}}>{n[`text_${lang}`] || n.original || n.text}</div>
-                  {editMode && <button onClick={()=>delNotice(n.id)} style={{fontSize:10,color:'red',background:'none',border:'none',marginTop:4}}>Delete</button>}
-                </div>
+                <div key={n.id} className="notice-card"><div style={{fontSize:14, fontWeight:600}}>{n[`text_${lang}`] || n.original || n.text}</div>{editMode && <button onClick={()=>delNotice(n.id)} style={{fontSize:10,color:'red',background:'none',border:'none',marginTop:4}}>Delete</button>}</div>
               ))}
             </div>
 
-            {/* Workload Bar */}
             <div className={`workload-bar ${workloadInfo.status}`} onClick={() => setShowWorkloadDetails(!showWorkloadDetails)}>
-              <div style={{display:'flex', alignItems:'center', gap:8}}>
-                <Icon name="calendar" size={18} />
-                <div>
-                  <div>{workloadInfo.label}</div>
-                  <div style={{fontSize:10, opacity:0.8, fontWeight:500}}>{workloadInfo.sub}</div>
-                </div>
-              </div>
+              <div style={{display:'flex', alignItems:'center', gap:8}}><Icon name="calendar" size={18} /><div><div>{workloadInfo.label}</div><div style={{fontSize:10, opacity:0.8, fontWeight:500}}>{workloadInfo.sub}</div></div></div>
               <div style={{fontSize:11}}>{t.clickForDetails}</div>
             </div>
 
             {showWorkloadDetails && (
               <div className="card zoom-in" style={{padding:14, marginBottom:20, border:'1.5px solid var(--indigo-mid)'}}>
                 <div style={{fontSize:12, fontWeight:700, marginBottom:8}}>{t.loadFooter}</div>
-                <div style={{fontSize:11, color:'#64748b'}}>
-                  {lang === 'he' ? '* המערכת מחשבת אוטומטית חריגות מבחנים לפי ימים ושבועות.' : '* Система автоматически рассчитывает превышение тестов по дням и неделям.'}
-                </div>
+                <div style={{fontSize:11, color:'#64748b'}}>{lang === 'he' ? '* המערכת מחשבת אוטומטית חריגות מבחנים לפי ימים ושבועות.' : '* Система автоматически рассчитывает превышение тестов по дням и неделям.'}</div>
               </div>
             )}
 
             {/* Tasks */}
             <div>
-              <div style={{display:'flex', justifyContent:'space-between', marginBottom:10}}>
-                <div style={{fontWeight:900, fontSize:16}}>📅 {activeSubject === 'all' ? t.upcomingTasks : t.tasksSubject.replace('{subject}', getSubjectLabel(activeSubject))}</div>
-                <button onClick={()=>setShowAddExam(true)} style={{background:'var(--indigo)',border:'none',borderRadius:'50%',width:28,height:28,color:'white'}}>+</button>
-              </div>
+              <div style={{display:'flex', justifyContent:'space-between', marginBottom:10}}><div style={{fontWeight:900, fontSize:16}}>📅 {activeSubject === 'all' ? t.upcomingTasks : t.tasksSubject.replace('{subject}', getSubjectLabel(activeSubject))}</div><button onClick={()=>setShowAddExam(true)} style={{background:'var(--indigo)',border:'none',borderRadius:'50%',width:28,height:28,color:'white'}}>+</button></div>
               {filtered.length === 0 && <div style={{textAlign:'center',padding:40,color:'#94a3b8'}}>{t.noTasks}</div>}
               {filtered.map(ex => {
-                const urg = getUrgency(ex.date);
-                const d = new Date(ex.date);
+                const urg = getUrgency(ex.date); const d = new Date(ex.date);
                 return (
                   <div key={ex.id} className="exam-card">
-                    <div className="date-box">
-                      <div className="day">{d.getDate()}</div>
-                      <div className="month">{t.months[d.getMonth()].slice(0,3)}</div>
-                    </div>
+                    <div className="date-box"><div className="day">{d.getDate()}</div><div className="month">{t.months[d.getMonth()].slice(0,3)}</div></div>
                     <div style={{flex:1}}>
                       <div style={{display:'flex', gap:6, flexWrap:'wrap', marginBottom:4}}>
                         <span className={`badge badge-${ex.type}`}>{t.examTypes[ex.type]}</span>
@@ -793,12 +790,14 @@ function App() {
                       <div style={{fontSize:13, fontWeight:600}}>{ex[`details_${lang}`] || ex.details}</div>
                     </div>
                     <div style={{display:'flex', gap:6, alignItems:'center'}}>
-                      {ex.link && <a href={ex.link} target="_blank" className="link-btn" title={t.openLink}><Icon name="link" size={14} /></a>}
+                      {renderAttachmentIcon(ex)}
+                      {(ex.link || ex.attachment?.data) && (
+                        <a href={ex.link || ex.attachment.data} target="_blank" className="link-btn" title={t.openLink} download={ex.attachment?.name}>
+                          <Icon name="link" size={14} />
+                        </a>
+                      )}
                       {editMode && (
-                        <>
-                          <button className="edit-btn" onClick={() => setEditingExam(ex)}><Icon name="edit" size={16} /></button>
-                          <button className="edit-btn" style={{color:'#EF4444'}} onClick={()=>delExam(ex.id)}><Icon name="trash" size={16} /></button>
-                        </>
+                        <><button className="edit-btn" onClick={() => setEditingExam(ex)}><Icon name="edit" size={16} /></button><button className="edit-btn" style={{color:'#EF4444'}} onClick={()=>delExam(ex.id)}><Icon name="trash" size={16} /></button></>
                       )}
                     </div>
                   </div>
@@ -813,22 +812,13 @@ function App() {
             <div style={{fontWeight:900, fontSize:18, marginBottom:16}}>🗓️ {t.scheduleTitle}</div>
             <div style={{overflowX:'auto'}} className="no-scroll">
               <div className="schedule-grid" style={{minWidth:480}}>
-                <div className="hour-label">#</div>
-                {t.days.map(d => <div key={d} className="schedule-header">{d}</div>)}
+                <div className="hour-label">#</div>{t.days.map(d => <div key={d} className="schedule-header">{d}</div>)}
                 {[1,2,3,4,5,6,7].map(h => (
                   <React.Fragment key={h}>
                     <div className="hour-label">{h}</div>
                     {TRANSLATIONS.he.days.map(d => {
-                      const key = `${d}_${h}`;
-                      const val = schedule[key] ?? PRESET_SCHEDULE[key] ?? '';
-                      return (
-                        <div key={key} className="schedule-cell">
-                          {editMode ? 
-                            <input defaultValue={val} onBlur={e=>mergeSchedule({[key]:e.target.value})} style={{width:'100%',border:'none',textAlign:'center',fontSize:9}}/> :
-                            <span style={{fontSize:9}}>{val}</span>
-                          }
-                        </div>
-                      )
+                      const key = `${d}_${h}`; const val = schedule[key] ?? PRESET_SCHEDULE[key] ?? '';
+                      return (<div key={key} className="schedule-cell">{editMode ? <input defaultValue={val} onBlur={e=>mergeSchedule({[key]:e.target.value})} style={{width:'100%',border:'none',textAlign:'center',fontSize:9}}/> : <span style={{fontSize:9}}>{val}</span>}</div>)
                     })}
                   </React.Fragment>
                 ))}
@@ -839,20 +829,17 @@ function App() {
         
         {view === 'social' && (
           <div className="fade-in">
-            <div style={{fontWeight:900,fontSize:18,marginBottom:16,display:'flex',justifyContent:'space-between'}}>
-              <span>🎉 {t.eventsTitle}</span>
-              {editMode && <button onClick={()=>setShowAddEvent(true)} style={{background:'var(--indigo)',border:'none',borderRadius:'50%',width:28,height:28,color:'white'}}>+</button>}
-            </div>
+            <div style={{fontWeight:900,fontSize:18,marginBottom:16,display:'flex',justifyContent:'space-between'}}><span>🎉 {t.eventsTitle}</span>{editMode && <button onClick={()=>setShowAddEvent(true)} style={{background:'var(--indigo)',border:'none',borderRadius:'50%',width:28,height:28,color:'white'}}>+</button>}</div>
             {events.map(ev => (
               <div key={ev.id} className="exam-card">
                 <div className="date-box"><div className="day">{new Date(ev.date).getDate()}</div></div>
-                <div style={{flex:1}}>
-                  <div style={{fontWeight:800}}>{ev[`title_${lang}`] || ev.title}</div>
-                  <div style={{fontSize:12,color:'#64748b'}}>{ev[`desc_${lang}`] || ev.desc}</div>
-                </div>
+                <div style={{flex:1}}><div style={{fontWeight:800}}>{ev[`title_${lang}`] || ev.title}</div><div style={{fontSize:12,color:'#64748b'}}>{ev[`desc_${lang}`] || ev.desc}</div></div>
                 <div style={{display:'flex', gap:6, alignItems:'center'}}>
-                  {ev.link && <a href={ev.link} target="_blank" className="link-btn" title={t.openLink}><Icon name="link" size={14} /></a>}
-                  {editMode && <button onClick={()=>delEvent(ev.id)} style={{background:'none',border:'none'}}>🗑️</button>}
+                  {renderAttachmentIcon(ev)}
+                  {(ev.link || ev.attachment?.data) && <a href={ev.link || ev.attachment.data} target="_blank" className="link-btn" title={t.openLink}><Icon name="link" size={14} /></a>}
+                  {editMode && (
+                     <><button className="edit-btn" onClick={() => setEditingEvent(ev)}><Icon name="edit" size={16} /></button><button className="edit-btn" style={{color:'#EF4444'}} onClick={()=>delEvent(ev.id)}><Icon name="trash" size={16} /></button></>
+                  )}
                 </div>
               </div>
             ))}
@@ -862,24 +849,12 @@ function App() {
         {view === 'contacts' && (
           <div className="fade-in">
             <div className="card" style={{padding:16, marginBottom:16, background:'var(--indigo-light)'}}>
-              <div style={{fontSize:10,fontWeight:800,color:'var(--indigo)'}}>{t.homeroomLabel}</div>
-              <div style={{fontWeight:900,fontSize:18}}>לילי / Лили</div>
-              <a href={`tel:${meta.homeroomPhone}`} style={{color:'var(--indigo)',fontWeight:700,fontSize:14}}>📞 {meta.homeroomPhone}</a>
+              <div style={{fontSize:10,fontWeight:800,color:'var(--indigo)'}}>{t.homeroomLabel}</div><div style={{fontWeight:900,fontSize:18}}>לילי / Лили</div><a href={`tel:${meta.homeroomPhone}`} style={{color:'var(--indigo)',fontWeight:700,fontSize:14}}>📞 {meta.homeroomPhone}</a>
             </div>
-            <div style={{display:'flex', gap:8, marginBottom:16}}>
-              <input className="input-field" placeholder={t.searchStudent} value={search} onChange={e=>setSearch(e.target.value)} style={{flex:1}}/>
-              <button onClick={()=>setShowAddContact(true)} style={{background:'var(--indigo)',color:'white',border:'none',borderRadius:12,padding:'0 14px',fontWeight:700}}>+</button>
-            </div>
+            <div style={{display:'flex', gap:8, marginBottom:16}}><input className="input-field" placeholder={t.searchStudent} value={search} onChange={e=>setSearch(e.target.value)} style={{flex:1}}/><button onClick={()=>setShowAddContact(true)} style={{background:'var(--indigo)',color:'white',border:'none',borderRadius:12,padding:'0 14px',fontWeight:700}}>+</button></div>
             <div className="card">
               {contacts.filter(c => c.studentName.includes(search)).map(c => (
-                <div key={c.id} className="contact-row" style={{padding:'10px 16px'}}>
-                  <div className="contact-avatar">{c.studentName[0]}</div>
-                  <div style={{flex:1}}>
-                    <div style={{fontWeight:800}}>{c.studentName}</div>
-                    <div style={{fontSize:11,color:'#64748b'}}>{c.parent1Name} {c.parent1Phone}</div>
-                  </div>
-                  {editMode && <button onClick={()=>delContact(c.id)} style={{border:'none',background:'none'}}>🗑️</button>}
-                </div>
+                <div key={c.id} className="contact-row" style={{padding:'10px 16px'}}><div className="contact-avatar">{c.studentName[0]}</div><div style={{flex:1}}><div style={{fontWeight:800}}>{c.studentName}</div><div style={{fontSize:11,color:'#64748b'}}>{c.parent1Name} {c.parent1Phone}</div></div>{editMode && <button onClick={()=>delContact(c.id)} style={{border:'none',background:'none'}}>🗑️</button>}</div>
               ))}
             </div>
           </div>
@@ -896,136 +871,87 @@ function App() {
         </div>
       </div>
 
-      {/* A11Y MODAL */}
-      {showA11y && (
-        <div className="modal-overlay" onClick={()=>setShowA11y(false)}>
-          <div className="modal-sheet" onClick={e=>e.stopPropagation()}>
-            <div className="modal-handle"/>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-              <div style={{fontWeight:900,fontSize:18}}>{t.a11yTitle}</div>
-              <div style={{display:'flex',gap:8}}>
-                <button onClick={()=>setLang('he')} style={{fontWeight:lang==='he'?900:400,color:lang==='he'?'var(--indigo)':'#94a3b8',border:'none',background:'none'}}>HE</button>
-                <button onClick={()=>setLang('ru')} style={{fontWeight:lang==='ru'?900:400,color:lang==='ru'?'var(--indigo)':'#94a3b8',border:'none',background:'none'}}>RU</button>
-              </div>
-            </div>
-            <div className="a11y-grid">
-              <button className={`a11y-option ${a11y.highContrast?'active':''}`} onClick={()=>setA11y(p=>({...p,highContrast:!p.highContrast}))}>🌓 {t.a11yContrast}</button>
-              <button className={`a11y-option ${a11y.grayscale?'active':''}`} onClick={()=>setA11y(p=>({...p,grayscale:!p.grayscale}))}>🏁 {t.a11yGrayscale}</button>
-              <button className={`a11y-option ${a11y.readableFont?'active':''}`} onClick={()=>setA11y(p=>({...p,readableFont:!p.readableFont}))}>🔤 {t.a11yFont}</button>
-              <button className={`a11y-option ${a11y.highlightLinks?'active':''}`} onClick={()=>setA11y(p=>({...p,highlightLinks:!p.highlightLinks}))}>🔗 {t.a11yLinks}</button>
-            </div>
-            <button className="btn-primary" onClick={()=>setShowA11y(false)} style={{marginTop:20}}>{t.close}</button>
-          </div>
-        </div>
-      )}
-
       {/* MODALS */}
       {showAddNotice && <div className="modal-overlay" onClick={()=>setShowAddNotice(false)}><div className="modal-sheet" onClick={e=>e.stopPropagation()}>
           <div style={{fontWeight:900,marginBottom:15}}>{t.addNotice}</div>
           <textarea className="input-field" id="nText" rows="4" placeholder={t.addNotice}></textarea>
-          <button className="btn-primary" style={{marginTop:10}} onClick={()=>{handleAddNotice(document.getElementById('nText').value)}} disabled={isTranslating}>
-            {isTranslating ? t.translating : t.add}
-          </button>
+          <button className="btn-primary" style={{marginTop:10}} onClick={()=>{handleAddNotice(document.getElementById('nText').value)}} disabled={isTranslating}>{isTranslating ? t.translating : t.add}</button>
       </div></div>}
       
-      {(showAddExam || editingExam) && <div className="modal-overlay" onClick={()=>{setShowAddExam(false); setEditingExam(null)}}><div className="modal-sheet" onClick={e=>e.stopPropagation()}>
+      {(showAddExam || editingExam) && <div className="modal-overlay" onClick={()=>{setShowAddExam(false); setEditingExam(null); setTempAttachment(null);}}><div className="modal-sheet" onClick={e=>e.stopPropagation()}>
           <div style={{fontWeight:900,marginBottom:15}}>{editingExam ? t.editExam : t.addExam}</div>
-          <select className="input-field" id="eSub" defaultValue={editingExam?.subject || ''}>
-            {TRANSLATIONS.he.subjectsList.map((s,i)=><option key={s} value={s}>{t.subjectsList[i]}</option>)}
-          </select>
+          <select className="input-field" id="eSub" defaultValue={editingExam?.subject || ''}>{TRANSLATIONS.he.subjectsList.map((s,i)=><option key={s} value={s}>{t.subjectsList[i]}</option>)}</select>
           <input type="date" className="input-field" id="eDate" style={{marginTop:10}} defaultValue={editingExam?.date || ''}/>
           <input className="input-field" id="eDet" placeholder="Details" style={{marginTop:10}} defaultValue={editingExam ? (editingExam[`details_${lang}`] || editingExam.details) : ''}/>
+          
+          <div className="attach-row">
+            <div className={`attach-chip ${tempAttachment?.type === 'image' ? 'active' : ''}`} onClick={() => fileInputRef.current.click()}><Icon name="image" size={18} />{t.attachImg}</div>
+            <div className={`attach-chip ${tempAttachment?.type === 'file' ? 'active' : ''}`} onClick={() => fileInputRef.current.click()}><Icon name="file" size={18} />{t.attachFile}</div>
+            <div className={`attach-chip ${editingExam?.link?.includes('drive') ? 'active' : ''}`} onClick={() => { const link = prompt(t.linkPlaceholder); if(link) { document.getElementById('eLink').value = link; setTempAttachment(null); alert(t.linkPasted); }}}><Icon name="drive" size={18} />{t.attachDrive}</div>
+          </div>
+
           <input className="input-field" id="eLink" placeholder={t.linkPlaceholder} style={{marginTop:10}} defaultValue={editingExam?.link || ''}/>
-          <button className="btn-primary" style={{marginTop:10}} onClick={()=>{handleSaveExam({subject:document.getElementById('eSub').value,date:document.getElementById('eDate').value,details:document.getElementById('eDet').value,link:document.getElementById('eLink').value,type:'exam'})}} disabled={isTranslating}>
+          
+          <button className="btn-primary" style={{marginTop:10}} onClick={()=>{handleSaveExam({subject:document.getElementById('eSub').value,date:document.getElementById('eDate').value,details:document.getElementById('eDet').value,link:document.getElementById('eLink').value,type:'exam', attachment: editingExam?.attachment})}} disabled={isTranslating}>
             {isTranslating ? t.translating : (editingExam ? t.save : t.add)}
           </button>
       </div></div>}
 
-      {showAddEvent && <div className="modal-overlay" onClick={()=>setShowAddEvent(false)}><div className="modal-sheet" onClick={e=>e.stopPropagation()}>
-          <div style={{fontWeight:900,marginBottom:15}}>{t.socialTab}</div>
-          <input className="input-field" id="evTitle" placeholder="Title" />
-          <input type="date" className="input-field" id="evDate" style={{marginTop:10}}/>
-          <textarea className="input-field" id="evDesc" rows="3" style={{marginTop:10}} placeholder="Description"></textarea>
-          <input className="input-field" id="evLink" placeholder={t.linkPlaceholder} style={{marginTop:10}} />
-          <button className="btn-primary" style={{marginTop:10}} onClick={()=>{handleAddEvent({title:document.getElementById('evTitle').value,date:document.getElementById('evDate').value,desc:document.getElementById('evDesc').value,link:document.getElementById('evLink').value})}} disabled={isTranslating}>
-            {isTranslating ? t.translating : t.add}
+      {(showAddEvent || editingEvent) && <div className="modal-overlay" onClick={()=>{setShowAddEvent(false); setEditingEvent(null); setTempAttachment(null);}}><div className="modal-sheet" onClick={e=>e.stopPropagation()}>
+          <div style={{fontWeight:900,marginBottom:15}}>{editingEvent ? t.editExam : t.socialTab}</div>
+          <input className="input-field" id="evTitle" placeholder="Title" defaultValue={editingEvent ? (editingEvent[`title_${lang}`] || editingEvent.title) : ''} />
+          <input type="date" className="input-field" id="evDate" style={{marginTop:10}} defaultValue={editingEvent?.date || ''}/>
+          <textarea className="input-field" id="evDesc" rows="3" style={{marginTop:10}} placeholder="Description" defaultValue={editingEvent ? (editingEvent[`desc_${lang}`] || editingEvent.desc) : ''}></textarea>
+          
+          <div className="attach-row">
+            <div className={`attach-chip ${tempAttachment ? 'active' : ''}`} onClick={() => fileInputRef.current.click()}><Icon name="file" size={18} />{t.attachFile}</div>
+            <div className="attach-chip" onClick={() => { const link = prompt(t.linkPlaceholder); if(link) { document.getElementById('evLink').value = link; alert(t.linkPasted); }}}><Icon name="drive" size={18} />{t.attachDrive}</div>
+          </div>
+
+          <input className="input-field" id="evLink" placeholder={t.linkPlaceholder} style={{marginTop:10}} defaultValue={editingEvent?.link || ''} />
+          <button className="btn-primary" style={{marginTop:10}} onClick={()=>{handleSaveEvent({title:document.getElementById('evTitle').value,date:document.getElementById('evDate').value,desc:document.getElementById('evDesc').value,link:document.getElementById('evLink').value, attachment: editingEvent?.attachment})}} disabled={isTranslating}>
+            {isTranslating ? t.translating : (editingEvent ? t.save : t.add)}
           </button>
       </div></div>}
 
       {showAddContact && <div className="modal-overlay" onClick={()=>setShowAddContact(false)}><div className="modal-sheet" onClick={e=>e.stopPropagation()}>
           <div style={{fontWeight:900,marginBottom:15}}>{t.addContact}</div>
-          <input className="input-field" id="cName" placeholder={t.firstName} />
-          <input className="input-field" id="cPName" placeholder={t.parent} style={{marginTop:10}}/>
-          <input className="input-field" id="cPhone" placeholder={t.phone} style={{marginTop:10}}/>
+          <input className="input-field" id="cName" placeholder={t.firstName} /><input className="input-field" id="cPName" placeholder={t.parent} style={{marginTop:10}}/><input className="input-field" id="cPhone" placeholder={t.phone} style={{marginTop:10}}/>
           <button className="btn-primary" style={{marginTop:10}} onClick={()=>{
-              const name = document.getElementById('cName').value;
-              const pName = document.getElementById('cPName').value;
-              const phone = document.getElementById('cPhone').value;
-              if (name && pName && phone) {
-                window.db.collection('contacts').add({ studentName: name, parent1Name: pName, parent1Phone: phone, _ts: Date.now() });
-                setShowAddContact(false);
-              }
+              const name = document.getElementById('cName').value; const pName = document.getElementById('cPName').value; const phone = document.getElementById('cPhone').value;
+              if (name && pName && phone) { window.db.collection('contacts').add({ studentName: name, parent1Name: pName, parent1Phone: phone, _ts: Date.now() }); setShowAddContact(false); }
             }}>{t.add}</button>
+      </div></div>}
+
+      {showA11y && <div className="modal-overlay" onClick={()=>setShowA11y(false)}><div className="modal-sheet" onClick={e=>e.stopPropagation()}>
+            <div className="modal-handle"/>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}><div style={{fontWeight:900,fontSize:18}}>{t.a11yTitle}</div><div style={{display:'flex',gap:8}}><button onClick={()=>setLang('he')} style={{fontWeight:lang==='he'?900:400,color:lang==='he'?'var(--indigo)':'#94a3b8',border:'none',background:'none'}}>HE</button><button onClick={()=>setLang('ru')} style={{fontWeight:lang==='ru'?900:400,color:lang==='ru'?'var(--indigo)':'#94a3b8',border:'none',background:'none'}}>RU</button></div></div>
+            <div className="a11y-grid">
+              <button className={`a11y-option ${a11y.highContrast?'active':''}`} onClick={()=>setA11y(p=>({...p,highContrast:!p.highContrast}))}>🌓 {t.a11yContrast}</button>
+              <button className={`a11y-option ${a11y.grayscale?'active':''}`} onClick={()=>setA11y(p=>({...p,grayscale:!p.grayscale}))}>🏁 {t.a11yGrayscale}</button>
+              <button className={`a11y-option ${a11y.readableFont?'active':''}`} onClick={()=>setA11y(p=>({...p,readableFont:!p.readableFont}))}>🔤 {t.a11yFont}</button>
+              <button className={`a11y-option ${a11y.highlightLinks?'active':''}`} onClick={()=>setA11y(p=>({...p,highlightLinks:!p.highlightLinks}))}>🔗 {t.a11yLinks}</button>
+            </div><button className="btn-primary" onClick={()=>setShowA11y(false)} style={{marginTop:20}}>{t.close}</button>
       </div></div>}
     </div>
   );
 }
 
 function AuthScreen({ t, lang, setLang, onLogin }) {
-  const [step, setStep] = useState('code');
-  const [code, setCode] = useState('');
-  const [role, setRole] = useState('');
-  const [f, setF] = useState({firstName:'',lastName:'',phone:''});
-
+  const [step, setStep] = useState('code'); const [code, setCode] = useState(''); const [role, setRole] = useState(''); const [f, setF] = useState({firstName:'',lastName:'',phone:''});
   const handleSubmit = async () => {
-    // Persistent back-door: works everywhere, even after publication
-    if (f.phone === '123123') {
-      onLogin({ 
-        id: 'dummy-tester-id-' + Date.now(),
-        firstName: 'Tester', 
-        lastName: 'Mode', 
-        phone: '123123', 
-        role: 'admin', 
-        isDummy: true 
-      });
-      return;
-    }
-    
-    if (role && f.firstName && f.lastName && f.phone) {
-      onLogin({...f, role});
-    }
+    if (f.phone === '123123') { onLogin({ id: 'dummy-tester-id-' + Date.now(), firstName: 'Tester', lastName: 'Mode', phone: '123123', role: 'admin', isDummy: true }); return; }
+    if (role && f.firstName && f.lastName && f.phone) onLogin({...f, role});
   };
-
   return (
     <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:'linear-gradient(135deg,#EEF2FF 0%,#CCFBF1 100%)',padding:20}}>
-      <div style={{position:'absolute',top:20,right:20,display:'flex',gap:10}}>
-         <button onClick={()=>setLang('he')} style={{fontWeight:lang==='he'?900:400,border:'none',background:'none',fontSize:12}}>HE</button>
-         <button onClick={()=>setLang('ru')} style={{fontWeight:lang==='ru'?900:400,border:'none',background:'none',fontSize:12}}>RU</button>
-      </div>
+      <div style={{position:'absolute',top:20,right:20,display:'flex',gap:10}}><button onClick={()=>setLang('he')} style={{fontWeight:lang==='he'?900:400,border:'none',background:'none',fontSize:12}}>HE</button><button onClick={()=>setLang('ru')} style={{fontWeight:lang==='ru'?900:400,border:'none',background:'none',fontSize:12}}>RU</button></div>
       <div style={{background:'white',borderRadius:28,padding:28,width:'100%',maxWidth:420,boxShadow:'0 20px 60px rgba(0,0,0,0.1)'}}>
-        <div style={{textAlign:'center',marginBottom:24}}>
-          <div style={{fontSize:48}}>📚</div>
-          <div style={{fontWeight:900,fontSize:24,color:'var(--indigo)'}}>{t.appName}</div>
-        </div>
+        <div style={{textAlign:'center',marginBottom:24}}><div style={{fontSize:48}}>📚</div><div style={{fontWeight:900,fontSize:24,color:'var(--indigo)'}}>{t.appName}</div></div>
         {step === 'code' ? (
-          <div style={{display:'flex',flexDirection:'column',gap:14}}>
-            <div style={{fontSize:14,fontWeight:700,textAlign:'center'}}>{t.classCodeLabel}</div>
-            <input className="input-field" type="password" value={code} onChange={e=>setCode(e.target.value)} style={{textAlign:'center',fontSize:24,letterSpacing:8}}/>
-            <button className="btn-primary" onClick={()=>code==='1111'?setStep('details'):alert(t.classCodeWrong)}>{t.continue}</button>
-          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:14}}><div style={{fontSize:14,fontWeight:700,textAlign:'center'}}>{t.classCodeLabel}</div><input className="input-field" type="password" value={code} onChange={e=>setCode(e.target.value)} style={{textAlign:'center',fontSize:24,letterSpacing:8}}/><button className="btn-primary" onClick={()=>code==='1111'?setStep('details'):alert(t.classCodeWrong)}>{t.continue}</button></div>
         ) : (
-          <div style={{display:'flex',flexDirection:'column',gap:12}}>
-            <div style={{display:'flex',gap:8}}>
-              <input className="input-field" placeholder={t.firstName} value={f.firstName} onChange={e=>setF({...f,firstName:e.target.value})} disabled={f.phone==='123123'}/>
-              <input className="input-field" placeholder={t.lastName} value={f.lastName} onChange={e=>setF({...f,lastName:e.target.value})} disabled={f.phone==='123123'}/>
-            </div>
-            <input className="input-field" placeholder={t.phone} value={f.phone} onChange={e=>setF({...f,phone:e.target.value})}/>
-            <div style={{display:'flex',gap:8,marginTop:10}}>
-              <button onClick={()=>setRole('parent')} disabled={f.phone==='123123'} style={{flex:1,padding:10,borderRadius:12,border:role==='parent'?'2px solid var(--indigo)':'1px solid #ddd',background:role==='parent'?'var(--indigo-light)':'white'}}>{t.parent}</button>
-              <button onClick={()=>setRole('student')} disabled={f.phone==='123123'} style={{flex:1,padding:10,borderRadius:12,border:role==='student'?'2px solid var(--indigo)':'1px solid #ddd',background:role==='student'?'var(--indigo-light)':'white'}}>{t.student}</button>
-            </div>
-            <button className="btn-primary" onClick={handleSubmit} disabled={f.phone !== '123123' && (!role || !f.firstName || !f.lastName || !f.phone)}>{t.enterApp}</button>
-          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:12}}><div style={{display:'flex',gap:8}}><input className="input-field" placeholder={t.firstName} value={f.firstName} onChange={e=>setF({...f,firstName:e.target.value})} disabled={f.phone==='123123'}/><input className="input-field" placeholder={t.lastName} value={f.lastName} onChange={e=>setF({...f,lastName:e.target.value})} disabled={f.phone==='123123'}/></div><input className="input-field" placeholder={t.phone} value={f.phone} onChange={e=>setF({...f,phone:e.target.value})}/><div style={{display:'flex',gap:8,marginTop:10}}><button onClick={()=>setRole('parent')} disabled={f.phone==='123123'} style={{flex:1,padding:10,borderRadius:12,border:role==='parent'?'2px solid var(--indigo)':'1px solid #ddd',background:role==='parent'?'var(--indigo-light)':'white'}}>{t.parent}</button><button onClick={()=>setRole('student')} disabled={f.phone==='123123'} style={{flex:1,padding:10,borderRadius:12,border:role==='student'?'2px solid var(--indigo)':'1px solid #ddd',background:role==='student'?'var(--indigo-light)':'white'}}>{t.student}</button></div><button className="btn-primary" onClick={handleSubmit} disabled={f.phone !== '123123' && (!role || !f.firstName || !f.lastName || !f.phone)}>{t.enterApp}</button></div>
         )}
       </div>
     </div>
