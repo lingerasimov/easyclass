@@ -660,6 +660,9 @@ function App() {
   const [events,   addEventFB,   delEventFB,   ,             eventsReady]   = useFireCollection('events');
   const [comments, addCommentFB, delCommentFB, ,             commentsReady] = useFireCollection('comments');
   const [schedule, mergeSchedule] = useFireDoc('meta/schedule', {});
+  const [metaDoc, mergeMeta] = useFireDoc('meta/settings', { homeroomPhone: '0526176593' });
+  const homeroomPhone = metaDoc.homeroomPhone || '0526176593';
+  const setHomeroomPhone = (v) => mergeMeta({ homeroomPhone: v });
   const [search, setSearch] = useState('');
   const dbReady = examsReady && noticesReady && contactsReady && eventsReady;
 
