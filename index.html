@@ -33,29 +33,61 @@ console.warn = (...a) => { if (String(a[0]||'').includes('Babel')) return; _orig
 <!-- Babel -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
 
-<!-- Firebase official CDN (synchronous) -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
-<!-- Init Firebase immediately after SDKs load -->
+<!-- Firebase: dynamic load with fallback CDNs -->
 <script>
-  window.db = null;
-  window._dbReady = false;
+window.db = null;
+window._dbReady = false;
+window._firebaseConfig = {
+  apiKey: "AIzaSyCICeP9_h3MiTImAAF5eHRtIuEAderJQmA",
+  authDomain: "easy-class-abd2d.firebaseapp.com",
+  projectId: "easy-class-abd2d",
+  storageBucket: "easy-class-abd2d.firebasestorage.app",
+  messagingSenderId: "884993380081",
+  appId: "1:884993380081:web:3a76ecce354a620493e350"
+};
+
+function initFirebase() {
   try {
-    firebase.initializeApp({
-      apiKey: "AIzaSyCICeP9_h3MiTImAAF5eHRtIuEAderJQmA",
-      authDomain: "easy-class-abd2d.firebaseapp.com",
-      projectId: "easy-class-abd2d",
-      storageBucket: "easy-class-abd2d.firebasestorage.app",
-      messagingSenderId: "884993380081",
-      appId: "1:884993380081:web:3a76ecce354a620493e350"
-    });
+    if (typeof firebase === 'undefined') throw new Error('firebase not loaded');
+    if (!firebase.apps.length) firebase.initializeApp(window._firebaseConfig);
     window.db = firebase.firestore();
     window._dbReady = true;
     console.log("✅ Firebase connected");
+    // Notify React app
+    document.dispatchEvent(new Event('firebase-ready'));
   } catch(e) {
     console.error("❌ Firebase init failed:", e);
+    document.dispatchEvent(new Event('firebase-ready'));
   }
+}
+
+function loadScript(src, onload, onerror) {
+  const s = document.createElement('script');
+  s.src = src; s.onload = onload; s.onerror = onerror;
+  document.head.appendChild(s);
+}
+
+// Try gstatic first, then cdnjs as fallback
+const FIREBASE_VER = '9.23.0';
+const CDNS = [
+  `https://www.gstatic.com/firebasejs/${FIREBASE_VER}/firebase-app-compat.js`,
+  `https://cdnjs.cloudflare.com/ajax/libs/firebase/${FIREBASE_VER}/firebase-app-compat.min.js`
+];
+const CDNS_FS = [
+  `https://www.gstatic.com/firebasejs/${FIREBASE_VER}/firebase-firestore-compat.js`,
+  `https://cdnjs.cloudflare.com/ajax/libs/firebase/${FIREBASE_VER}/firebase-firestore-compat.min.js`
+];
+
+function loadApp(idx) {
+  if (idx >= CDNS.length) { document.dispatchEvent(new Event('firebase-ready')); return; }
+  loadScript(CDNS[idx], () => loadFirestore(0), () => loadApp(idx + 1));
+}
+function loadFirestore(idx) {
+  if (idx >= CDNS_FS.length) { initFirebase(); return; }
+  loadScript(CDNS_FS[idx], () => initFirebase(), () => loadFirestore(idx + 1));
+}
+
+loadApp(0);
 </script>
 
 <style>
@@ -239,13 +271,18 @@ console.warn = (...a) => { if (String(a[0]||'').includes('Babel')) return; _orig
   .soon { background: #fef3c7; color: #92400e; }
   .ok { background: var(--teal-light); color: #0f766e; }
 
-  /* Subject bar - always wraps */
+  /* Subject bar - always wraps, separated from header */
+  .subject-bar-wrapper {
+    background: white;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 10px 16px 12px;
+    max-width: 600px;
+    margin: 0 auto;
+  }
   .subject-bar {
-    margin-top: 10px;
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    padding-bottom: 4px;
   }
 
   @media (min-width: 768px) {
@@ -310,17 +347,33 @@ function useFireCollection(name) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (!window._dbReady || !window.db) { setReady(true); return; }
+    function subscribe() {
+      if (!window._dbReady || !window.db) { setReady(true); return; }
+      let unsub;
+      try {
+        unsub = getDb().collection(name)
+          .orderBy('_ts', 'asc')
+          .onSnapshot(
+            snap => { setDocs(snap.docs.map(d => ({ id: d.id, ...d.data() }))); setReady(true); },
+            err  => { console.warn('Firestore listen error:', err); setReady(true); }
+          );
+      } catch(e) { console.error(e); setReady(true); }
+      return unsub;
+    }
+
+    // If Firebase already ready, subscribe immediately
+    if (window._dbReady) {
+      const unsub = subscribe();
+      return () => unsub && unsub();
+    }
+    // Otherwise wait for firebase-ready event
     let unsub;
-    try {
-      unsub = getDb().collection(name)
-        .orderBy('_ts', 'asc')
-        .onSnapshot(
-          snap => { setDocs(snap.docs.map(d => ({ id: d.id, ...d.data() }))); setReady(true); },
-          err  => { console.warn('Firestore listen error:', err); setReady(true); }
-        );
-    } catch(e) { console.error(e); setReady(true); }
-    return () => unsub && unsub();
+    const handler = () => { unsub = subscribe(); };
+    document.addEventListener('firebase-ready', handler, { once: true });
+    return () => {
+      document.removeEventListener('firebase-ready', handler);
+      unsub && unsub();
+    };
   }, [name]);
 
   const add = (item) => { try { return getDb().collection(name).add(cleanItem(item)); } catch(e) { console.error(e); } };
@@ -333,15 +386,26 @@ function useFireCollection(name) {
 function useFireDoc(path, def) {
   const [data, setData] = useState(def);
   useEffect(() => {
-    if (!window._dbReady || !window.db) return;
+    function subscribe() {
+      if (!window._dbReady || !window.db) return null;
+      try {
+        return getDb().doc(path).onSnapshot(
+          snap => { if (snap.exists) setData(snap.data()); },
+          err  => console.warn('Firestore doc error:', err)
+        );
+      } catch(e) { console.error(e); return null; }
+    }
+    if (window._dbReady) {
+      const unsub = subscribe();
+      return () => unsub && unsub();
+    }
     let unsub;
-    try {
-      unsub = getDb().doc(path).onSnapshot(
-        snap => { if (snap.exists) setData(snap.data()); },
-        err  => console.warn('Firestore doc error:', err)
-      );
-    } catch(e) { console.error(e); }
-    return () => unsub && unsub();
+    const handler = () => { unsub = subscribe(); };
+    document.addEventListener('firebase-ready', handler, { once: true });
+    return () => {
+      document.removeEventListener('firebase-ready', handler);
+      unsub && unsub();
+    };
   }, [path]);
   const merge = (updates) => { try { getDb().doc(path).set(updates, { merge: true }); } catch(e) { console.error(e); } };
   return [data, merge];
@@ -435,6 +499,148 @@ function InstallBanner() {
   );
 }
 
+
+// ---- LOAD CHECKER (חוזר מנכ"ל) ----
+function checkAcademicLoad(exams) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const assessmentTypes = ['exam','quiz','project','hw','task'];
+
+  // Get assessments in the next 14 days
+  const upcoming = exams.filter(e => {
+    const d = new Date(e.date); d.setHours(0,0,0,0);
+    const diff = Math.ceil((d - today) / 86400000);
+    return diff >= 0 && diff <= 14;
+  });
+
+  const violations = [];
+  const warnings = [];
+
+  // Group by date
+  const byDate = {};
+  upcoming.forEach(e => {
+    const key = e.date;
+    if (!byDate[key]) byDate[key] = [];
+    byDate[key].push(e);
+  });
+
+  // Check: more than 1 assessment per day
+  Object.entries(byDate).forEach(([date, items]) => {
+    if (items.length > 1) {
+      const d = new Date(date);
+      const dayStr = d.toLocaleDateString('he-IL', {weekday:'long', day:'numeric', month:'long'});
+      violations.push(`יותר מאירוע הערכה אחד ב${dayStr} (${items.length} אירועים: ${items.map(i=>i.subject).join(', ')})`);
+    }
+  });
+
+  // Group by week (Sun-Sat)
+  const byWeek = {};
+  upcoming.forEach(e => {
+    const d = new Date(e.date);
+    const day = d.getDay();
+    const sunday = new Date(d);
+    sunday.setDate(d.getDate() - day);
+    sunday.setHours(0,0,0,0);
+    const key = sunday.toISOString().slice(0,10);
+    if (!byWeek[key]) byWeek[key] = [];
+    byWeek[key].push(e);
+  });
+
+  // Check: more than 3 assessments per week
+  Object.entries(byWeek).forEach(([weekStart, items]) => {
+    if (items.length > 3) {
+      const d = new Date(weekStart);
+      const weekStr = d.toLocaleDateString('he-IL', {day:'numeric', month:'long'});
+      violations.push(`יותר מ-3 אירועי הערכה בשבוע ${weekStr} (${items.length} אירועים)`);
+    } else if (items.length === 3) {
+      const d = new Date(weekStart);
+      const weekStr = d.toLocaleDateString('he-IL', {day:'numeric', month:'long'});
+      warnings.push(`3 אירועי הערכה בשבוע ${weekStr} — מקסימום מותר`);
+    }
+  });
+
+  // Check: more than 2 exams per subject (in next 60 days = rough semester)
+  const examsBySubject = {};
+  exams.filter(e => {
+    const d = new Date(e.date); d.setHours(0,0,0,0);
+    const diff = Math.ceil((d - today) / 86400000);
+    return diff >= 0 && diff <= 90 && e.type === 'exam';
+  }).forEach(e => {
+    if (!examsBySubject[e.subject]) examsBySubject[e.subject] = 0;
+    examsBySubject[e.subject]++;
+  });
+  Object.entries(examsBySubject).forEach(([subject, count]) => {
+    if (count > 2) {
+      violations.push(`${subject}: ${count} מבחנים במחצית (מותר עד 2)`);
+    }
+  });
+
+  return { violations, warnings, ok: violations.length === 0 && warnings.length === 0 };
+}
+
+function LoadBanner({ exams }) {
+  const [open, setOpen] = useState(false);
+  const { violations, warnings, ok } = useMemo(() => checkAcademicLoad(exams), [exams]);
+
+  if (ok) {
+    return (
+      <div style={{
+        display:'flex', alignItems:'center', gap:10,
+        background:'#f0fdf4', border:'1.5px solid #86efac',
+        borderRadius:14, padding:'10px 14px', marginBottom:14,
+        cursor:'pointer'
+      }} onClick={() => setOpen(!open)}>
+        <span style={{fontSize:18}}>✅</span>
+        <div style={{flex:1}}>
+          <div style={{fontWeight:800, fontSize:13, color:'#16a34a'}}>עומס לימודי תקין</div>
+          <div style={{fontSize:11, color:'#4ade80', marginTop:1}}>אין חריגה מהוראות חוזר מנכ"ל</div>
+        </div>
+        <span style={{color:'#86efac', fontSize:12}}>{open ? '▲' : '▼'}</span>
+      </div>
+    );
+  }
+
+  const hasViolations = violations.length > 0;
+
+  return (
+    <div style={{
+      background: hasViolations ? '#fff1f2' : '#fffbeb',
+      border: `1.5px solid ${hasViolations ? '#fca5a5' : '#fcd34d'}`,
+      borderRadius:14, padding:'10px 14px', marginBottom:14,
+      cursor:'pointer'
+    }} onClick={() => setOpen(!open)}>
+      <div style={{display:'flex', alignItems:'center', gap:10}}>
+        <span style={{fontSize:18}}>{hasViolations ? '🔴' : '🟡'}</span>
+        <div style={{flex:1}}>
+          <div style={{fontWeight:800, fontSize:13, color: hasViolations ? '#dc2626' : '#92400e'}}>
+            {hasViolations ? `עומס לימודי חריג — ${violations.length} חריגה מחוזר מנכ"ל` : `שים לב — ${warnings.length} אזהרת עומס`}
+          </div>
+          <div style={{fontSize:11, color: hasViolations ? '#fca5a5' : '#fcd34d', marginTop:1}}>
+            לחצי לפרטים
+          </div>
+        </div>
+        <span style={{fontSize:12, color:'#94a3b8'}}>{open ? '▲' : '▼'}</span>
+      </div>
+      {open && (
+        <div style={{marginTop:10, paddingTop:10, borderTop:`1px solid ${hasViolations ? '#fecaca' : '#fde68a'}`}}>
+          {violations.map((v,i) => (
+            <div key={i} style={{display:'flex', gap:6, alignItems:'flex-start', marginBottom:6, fontSize:12, color:'#dc2626', fontWeight:600}}>
+              <span>⚠️</span><span>{v}</span>
+            </div>
+          ))}
+          {warnings.map((w,i) => (
+            <div key={i} style={{display:'flex', gap:6, alignItems:'flex-start', marginBottom:6, fontSize:12, color:'#92400e', fontWeight:600}}>
+              <span>⚡</span><span>{w}</span>
+            </div>
+          ))}
+          <div style={{fontSize:10, color:'#94a3b8', marginTop:6, borderTop:'1px solid #f1f5f9', paddingTop:6}}>
+            לפי חוזר מנכ"ל: מקס' 1 אירוע ביום · 3 בשבוע · 2 מבחנים למקצוע במחצית
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ---- APP ----
 function App() {
   const [view, setView] = useState('home');
@@ -455,7 +661,7 @@ function App() {
   const [comments, addCommentFB, delCommentFB, ,             commentsReady] = useFireCollection('comments');
   const [schedule, mergeSchedule] = useFireDoc('meta/schedule', {});
   const [search, setSearch] = useState('');
-  const dbReady = examsReady && noticesReady;
+  const dbReady = examsReady && noticesReady && contactsReady && eventsReady;
 
   const addExam    = (item) => addExamFB(item);
   const delExam    = (id)   => delExamFB(id);
@@ -539,13 +745,17 @@ function App() {
           </div>
         </div>
 
-        {/* Subject pills */}
-        <div className="subject-bar">
-          <button onClick={() => setActiveSubject('all')} className={`subject-pill ${activeSubject==='all'?'active':''}`}>הכל</button>
-          {SUBJECTS.map(s => (
-            <button key={s} onClick={() => {setActiveSubject(s); setView('home');}} className={`subject-pill ${activeSubject===s?'active':''}`}>{s}</button>
-          ))}
         </div>
+      </div>
+      {/* Subject pills - separate row */}
+      <div style={{background:'white', borderBottom:'1px solid #e2e8f0', position:'sticky', top: 64, zIndex:49}}>
+        <div style={{maxWidth:600, margin:'0 auto', padding:'10px 16px 12px'}}>
+          <div className="subject-bar">
+            <button onClick={() => setActiveSubject('all')} className={`subject-pill ${activeSubject==='all'?'active':''}`}>הכל</button>
+            {SUBJECTS.map(s => (
+              <button key={s} onClick={() => {setActiveSubject(s); setView('home');}} className={`subject-pill ${activeSubject===s?'active':''}`}>{s}</button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -555,6 +765,9 @@ function App() {
         {/* HOME VIEW */}
         {view === 'home' && (
           <div className="fade-in">
+            {/* Load Banner */}
+            <LoadBanner exams={exams}/>
+
             {/* Notices */}
             <div style={{marginBottom:20}}>
               <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10}}>
@@ -622,12 +835,10 @@ function App() {
                           style={{background:'var(--indigo-light)',border:'none',borderRadius:8,padding:'5px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
                           <Icon name="edit" size={14} color="var(--indigo)"/>
                         </button>
-                        {editMode && (
-                          <button onClick={() => delExam(ex.id)}
-                            style={{background:'#fee2e2',border:'none',borderRadius:8,padding:'5px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
-                            <Icon name="trash" size={14} color="#f87171"/>
-                          </button>
-                        )}
+                        <button onClick={() => { if(window.confirm(`למחוק את "${ex.subject}"?`)) delExam(ex.id); }}
+                          style={{background:'#fee2e2',border:'none',borderRadius:8,padding:'5px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                          <Icon name="trash" size={14} color="#f87171"/>
+                        </button>
                       </div>
                     </div>
                     {ex.attachments && ex.attachments.length > 0 && (
@@ -746,7 +957,10 @@ function App() {
                     <div style={{fontWeight:800,fontSize:14,color:'#1e293b',marginBottom:2}}>{ev.title}</div>
                     {ev.desc && <div style={{fontSize:12,color:'#64748b'}}>{ev.desc}</div>}
                   </div>
-                  {editMode && <button onClick={() => delEvent(ev.id)} style={{background:'none',border:'none'}}><Icon name="trash" size={16} color="#f87171"/></button>}
+                  <button onClick={() => { if(window.confirm(`למחוק את "${ev.title}"?`)) delEvent(ev.id); }}
+                    style={{background:'#fee2e2',border:'none',borderRadius:8,padding:'6px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                    <Icon name="trash" size={14} color="#f87171"/>
+                  </button>
                 </div>
               ))}
             </div>
@@ -827,9 +1041,9 @@ function App() {
             {/* Contacts list */}
             <div className="card">
               <div style={{padding:'0 16px'}}>
-                {contacts.filter(c => c.studentName.includes(search)).sort((a,b) => a.studentName.localeCompare(b.studentName,'he')).map((c, i, arr) => (
+                {contacts.filter(c => (c.studentName||'').includes(search)).sort((a,b) => (a.studentName||'').localeCompare(b.studentName||'','he')).map((c, i, arr) => (
                   <div key={c.id} className="contact-row">
-                    <div className="contact-avatar">{c.studentName[0]}</div>
+                    <div className="contact-avatar">{(c.studentName||'?')[0]}</div>
                     <div style={{flex:1, minWidth:0}}>
                       <div style={{fontWeight:800, fontSize:14}}>{c.studentName}</div>
                       <div style={{fontSize:11, color:'#64748b', marginTop:1}}>
