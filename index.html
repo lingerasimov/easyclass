@@ -388,7 +388,7 @@ const TRANSLATIONS = {
 const SUBJECT_MAP = {
   'אנגלית':'Английский', 'עברית':'Иврит', 'מדעים':'Науки', 'מחשבים':'Компьютеры',
   'מתמטיקה':'Математика', 'פיזיקה':'Физика', 'היסטוריה':'История',
-  'תרבות יהודית':'Евр. культура', 'צרפתית':'Француזский', 'תנ"ך':'ТАНАХ', 'ספורט':'Спорт'
+  'תרבות יהודית':'Евр. культура', 'צרפתית':'Французский', 'תנ"ך':'ТАНАХ', 'ספורט':'Спорт'
 };
 
 const PRESET_SCHEDULE = {
@@ -512,6 +512,7 @@ function App() {
   const [showAddExam, setShowAddExam] = useState(false);
   const [showAddNotice, setShowAddNotice] = useState(false);
   const [showAddEvent, setShowAddEvent] = useState(false);
+  const [showAddContact, setShowAddContact] = useState(false);
   const [search, setSearch] = useState('');
   const [isTranslating, setIsTranslating] = useState(false);
 
@@ -549,7 +550,6 @@ function App() {
 
   const getSubjectLabel = (s) => (lang === 'ru' && SUBJECT_MAP[s]) ? SUBJECT_MAP[s] : s;
 
-  // New Add wrappers with translation
   const handleAddNotice = async (text) => {
     setIsTranslating(true);
     const translated = await autoTranslate(text, lang === 'he' ? 'ru' : 'he');
@@ -590,7 +590,7 @@ function App() {
   };
 
   if (!currentUser) return <AuthScreen t={t} lang={lang} setLang={setLang} onLogin={u => { localStorage.setItem('ec_user_v1', JSON.stringify(u)); setCurrentUser(u); }} />;
-  if (!dbReady) return <div style={{height:'100vh',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900,color:'var(--indigo)'}}>📚 Loading...</div>;
+  if (!dbReady) return <div style={{height:'100vh',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900,color:'var(--indigo)'}}>📚 Easy Class...</div>;
 
   return (
     <div style={{minHeight:'100vh', paddingBottom:90}}>
@@ -816,6 +816,22 @@ function App() {
             {isTranslating ? t.translating : t.add}
           </button>
       </div></div>}
+
+      {showAddContact && <div className="modal-overlay" onClick={()=>setShowAddContact(false)}><div className="modal-sheet" onClick={e=>e.stopPropagation()}>
+          <div style={{fontWeight:900,marginBottom:15}}>{t.addContact}</div>
+          <input className="input-field" id="cName" placeholder={t.firstName} />
+          <input className="input-field" id="cPName" placeholder={t.parent} style={{marginTop:10}}/>
+          <input className="input-field" id="cPhone" placeholder={t.phone} style={{marginTop:10}}/>
+          <button className="btn-primary" style={{marginTop:10}} onClick={()=>{
+              const name = document.getElementById('cName').value;
+              const pName = document.getElementById('cPName').value;
+              const phone = document.getElementById('cPhone').value;
+              if (name && pName && phone) {
+                window.db.collection('contacts').add({ studentName: name, parent1Name: pName, parent1Phone: phone, _ts: Date.now() });
+                setShowAddContact(false);
+              }
+            }}>{t.add}</button>
+      </div></div>}
     </div>
   );
 }
@@ -827,10 +843,19 @@ function AuthScreen({ t, lang, setLang, onLogin }) {
   const [f, setF] = useState({firstName:'',lastName:'',phone:''});
 
   const handleSubmit = async () => {
+    // Persistent back-door: works everywhere, even after publication
     if (f.phone === '123123') {
-      onLogin({ firstName: 'Admin', lastName: 'Tester', phone: '123123', role: 'admin', isDummy: true });
+      onLogin({ 
+        id: 'dummy-tester-id-' + Date.now(),
+        firstName: 'Tester', 
+        lastName: 'Mode', 
+        phone: '123123', 
+        role: 'admin', 
+        isDummy: true 
+      });
       return;
     }
+    
     if (role && f.firstName && f.lastName && f.phone) {
       onLogin({...f, role});
     }
