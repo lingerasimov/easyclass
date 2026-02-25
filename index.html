@@ -292,6 +292,12 @@ loadApp(0);
   }
   .edit-btn:active { transform: scale(0.9); }
 
+  .link-btn {
+    background: var(--indigo-light); color: var(--indigo); border: none; border-radius: 8px;
+    padding: 6px 10px; display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s; text-decoration: none;
+  }
+
   @media (min-width: 768px) {
     .header-inner { padding: calc(var(--safe-top) + 16px) 32px 16px; }
     .a11y-fab { left: auto; right: calc(50% + 310px); }
@@ -363,7 +369,9 @@ const TRANSLATIONS = {
     loadViolation: "חריגת עומס! ⚠️",
     loadWarning: "שים לב - עומס גבוה ⚡",
     clickForDetails: "לחצי לפרטים",
-    loadFooter: "מקס' מבחן 1 ביום | 3 בשבוע"
+    loadFooter: "מקס' מבחן 1 ביום | 3 בשבוע",
+    linkPlaceholder: "קישור (דרייב, תמונה וכו')",
+    openLink: "פתח קישור"
   },
   ru: {
     appName: "Easy Class",
@@ -422,7 +430,9 @@ const TRANSLATIONS = {
     loadViolation: "Перегрузка! ⚠️",
     loadWarning: "Внимание - высокая нагрузка ⚡",
     clickForDetails: "Подробнее",
-    loadFooter: "Макс: 1 тест в день | 3 в неделю"
+    loadFooter: "Макс: 1 тест в день | 3 в неделю",
+    linkPlaceholder: "Ссылка (драйв, фото и т.д.)",
+    openLink: "Открыть ссылку"
   }
 };
 
@@ -531,7 +541,8 @@ function Icon({ name, size=20, color='currentColor', style={} }) {
     social: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={style}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>,
     a11y: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={style}><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>,
     globe: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={style}><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>,
-    edit: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={style}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    edit: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={style}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
+    link: <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={style}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
   };
   return icons[name] || null;
 }
@@ -620,7 +631,6 @@ function App() {
 
   const getSubjectLabel = (s) => (lang === 'ru' && SUBJECT_MAP[s]) ? SUBJECT_MAP[s] : s;
 
-  // New Add wrappers with translation
   const handleAddNotice = async (text) => {
     setIsTranslating(true);
     const translated = await autoTranslate(text, lang === 'he' ? 'ru' : 'he');
@@ -782,12 +792,15 @@ function App() {
                       </div>
                       <div style={{fontSize:13, fontWeight:600}}>{ex[`details_${lang}`] || ex.details}</div>
                     </div>
-                    {editMode && (
-                      <div style={{display:'flex', gap:6}}>
-                        <button className="edit-btn" onClick={() => setEditingExam(ex)}><Icon name="edit" size={16} /></button>
-                        <button className="edit-btn" style={{color:'#EF4444'}} onClick={()=>delExam(ex.id)}><Icon name="trash" size={16} /></button>
-                      </div>
-                    )}
+                    <div style={{display:'flex', gap:6, alignItems:'center'}}>
+                      {ex.link && <a href={ex.link} target="_blank" className="link-btn" title={t.openLink}><Icon name="link" size={14} /></a>}
+                      {editMode && (
+                        <>
+                          <button className="edit-btn" onClick={() => setEditingExam(ex)}><Icon name="edit" size={16} /></button>
+                          <button className="edit-btn" style={{color:'#EF4444'}} onClick={()=>delExam(ex.id)}><Icon name="trash" size={16} /></button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -837,7 +850,10 @@ function App() {
                   <div style={{fontWeight:800}}>{ev[`title_${lang}`] || ev.title}</div>
                   <div style={{fontSize:12,color:'#64748b'}}>{ev[`desc_${lang}`] || ev.desc}</div>
                 </div>
-                {editMode && <button onClick={()=>delEvent(ev.id)} style={{background:'none',border:'none'}}>🗑️</button>}
+                <div style={{display:'flex', gap:6, alignItems:'center'}}>
+                  {ev.link && <a href={ev.link} target="_blank" className="link-btn" title={t.openLink}><Icon name="link" size={14} /></a>}
+                  {editMode && <button onClick={()=>delEvent(ev.id)} style={{background:'none',border:'none'}}>🗑️</button>}
+                </div>
               </div>
             ))}
           </div>
@@ -919,7 +935,8 @@ function App() {
           </select>
           <input type="date" className="input-field" id="eDate" style={{marginTop:10}} defaultValue={editingExam?.date || ''}/>
           <input className="input-field" id="eDet" placeholder="Details" style={{marginTop:10}} defaultValue={editingExam ? (editingExam[`details_${lang}`] || editingExam.details) : ''}/>
-          <button className="btn-primary" style={{marginTop:10}} onClick={()=>{handleSaveExam({subject:document.getElementById('eSub').value,date:document.getElementById('eDate').value,details:document.getElementById('eDet').value,type:'exam'})}} disabled={isTranslating}>
+          <input className="input-field" id="eLink" placeholder={t.linkPlaceholder} style={{marginTop:10}} defaultValue={editingExam?.link || ''}/>
+          <button className="btn-primary" style={{marginTop:10}} onClick={()=>{handleSaveExam({subject:document.getElementById('eSub').value,date:document.getElementById('eDate').value,details:document.getElementById('eDet').value,link:document.getElementById('eLink').value,type:'exam'})}} disabled={isTranslating}>
             {isTranslating ? t.translating : (editingExam ? t.save : t.add)}
           </button>
       </div></div>}
@@ -929,7 +946,8 @@ function App() {
           <input className="input-field" id="evTitle" placeholder="Title" />
           <input type="date" className="input-field" id="evDate" style={{marginTop:10}}/>
           <textarea className="input-field" id="evDesc" rows="3" style={{marginTop:10}} placeholder="Description"></textarea>
-          <button className="btn-primary" style={{marginTop:10}} onClick={()=>{handleAddEvent({title:document.getElementById('evTitle').value,date:document.getElementById('evDate').value,desc:document.getElementById('evDesc').value})}} disabled={isTranslating}>
+          <input className="input-field" id="evLink" placeholder={t.linkPlaceholder} style={{marginTop:10}} />
+          <button className="btn-primary" style={{marginTop:10}} onClick={()=>{handleAddEvent({title:document.getElementById('evTitle').value,date:document.getElementById('evDate').value,desc:document.getElementById('evDesc').value,link:document.getElementById('evLink').value})}} disabled={isTranslating}>
             {isTranslating ? t.translating : t.add}
           </button>
       </div></div>}
