@@ -269,6 +269,23 @@ loadApp(0);
   }
   .a11y-option.active { background: var(--indigo-light); border-color: var(--indigo); color: var(--indigo); }
 
+  /* Workload Bar Styling */
+  .workload-bar {
+    padding: 12px 16px;
+    border-radius: 16px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .workload-bar.safe { background: var(--teal-light); color: #0f766e; border: 1px solid #99f6e4; }
+  .workload-bar.warning { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+  .workload-bar.violation { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
+
   @media (min-width: 768px) {
     .header-inner { padding: calc(var(--safe-top) + 16px) 32px 16px; }
     .a11y-fab { left: auto; right: calc(50% + 310px); }
@@ -332,7 +349,13 @@ const TRANSLATIONS = {
     a11yLinks: "הדגשת קישורים",
     close: "סגור",
     translating: "מתרגם...",
-    switchLang: "RU"
+    switchLang: "RU",
+    loadOk: "עומס לימודי תקין ✅",
+    loadNoViolation: "תואם להוראות חוזר מנכ\"ל",
+    loadViolation: "חריגת עומס! ⚠️",
+    loadWarning: "שים לב - עומס גבוה ⚡",
+    clickForDetails: "לחצי לפרטים",
+    loadFooter: "מקס' מבחן 1 ביום | 3 בשבוע"
   },
   ru: {
     appName: "Easy Class",
@@ -383,7 +406,13 @@ const TRANSLATIONS = {
     a11yLinks: "Выделить ссылки",
     close: "Закрыть",
     translating: "Перевод...",
-    switchLang: "HE"
+    switchLang: "HE",
+    loadOk: "Нагрузка в норме ✅",
+    loadNoViolation: "Соответствует нормам",
+    loadViolation: "Перегрузка! ⚠️",
+    loadWarning: "Внимание - высокая нагрузка ⚡",
+    clickForDetails: "Подробнее",
+    loadFooter: "Макс: 1 тест в день | 3 в неделю"
   }
 };
 
@@ -518,6 +547,7 @@ function App() {
   const [showAddContact, setShowAddContact] = useState(false);
   const [search, setSearch] = useState('');
   const [isTranslating, setIsTranslating] = useState(false);
+  const [showWorkloadDetails, setShowWorkloadDetails] = useState(false);
 
   const [a11y, setA11y] = useState(() => JSON.parse(localStorage.getItem('ec_a11y')) || { grayscale: false, highContrast: false, readableFont: false, highlightLinks: false, fontSize: 100 });
   useEffect(() => {
@@ -541,6 +571,31 @@ function App() {
   const today = new Date(); today.setHours(0,0,0,0);
   const upcoming = exams.filter(e => new Date(e.date) >= today).sort((a,b) => new Date(a.date) - new Date(b.date));
   const filtered = activeSubject === 'all' ? upcoming : upcoming.filter(e => e.subject === activeSubject);
+
+  // ---- WORKLOAD LOGIC ----
+  const workloadInfo = useMemo(() => {
+    if (!exams.length) return { status: 'safe', label: t.loadOk, sub: t.loadNoViolation, count: 0 };
+    
+    const weekFromNow = new Date(today); weekFromNow.setDate(today.getDate() + 7);
+    const thisWeekExams = exams.filter(e => {
+      const d = new Date(e.date);
+      return d >= today && d <= weekFromNow;
+    });
+
+    const dayCounts = {};
+    thisWeekExams.forEach(e => { dayCounts[e.date] = (dayCounts[e.date] || 0) + 1; });
+    
+    const hasDailyViolation = Object.values(dayCounts).some(c => c > 1);
+    const weeklyCount = thisWeekExams.length;
+
+    if (hasDailyViolation || weeklyCount > 3) {
+      return { status: 'violation', label: t.loadViolation, sub: t.loadViolation, count: weeklyCount };
+    }
+    if (weeklyCount === 3) {
+      return { status: 'warning', label: t.loadWarning, sub: t.loadWarning.replace('{count}', '3'), count: weeklyCount };
+    }
+    return { status: 'safe', label: t.loadOk, sub: t.loadNoViolation, count: weeklyCount };
+  }, [exams, today, t]);
 
   const getUrgency = (date) => {
     const diff = Math.ceil((new Date(date) - today) / 86400000);
@@ -671,6 +726,30 @@ function App() {
                 </div>
               ))}
             </div>
+
+            {/* Workload Bar */}
+            <div 
+              className={`workload-bar ${workloadInfo.status}`}
+              onClick={() => setShowWorkloadDetails(!showWorkloadDetails)}
+            >
+              <div style={{display:'flex', alignItems:'center', gap:8}}>
+                <Icon name="calendar" size={18} />
+                <div>
+                  <div>{workloadInfo.label}</div>
+                  <div style={{fontSize:10, opacity:0.8, fontWeight:500}}>{workloadInfo.sub}</div>
+                </div>
+              </div>
+              <div style={{fontSize:11}}>{t.clickForDetails}</div>
+            </div>
+
+            {showWorkloadDetails && (
+              <div className="card zoom-in" style={{padding:14, marginBottom:20, border:'1.5px solid var(--indigo-mid)'}}>
+                <div style={{fontSize:12, fontWeight:700, marginBottom:8}}>{t.loadFooter}</div>
+                <div style={{fontSize:11, color:'#64748b'}}>
+                  {lang === 'he' ? '* המערכת מחשבת אוטומטית חריגות מבחנים לפי ימים ושבועות.' : '* Система автоматически рассчитывает превышение тестов по дням и неделям.'}
+                </div>
+              </div>
+            )}
 
             {/* Tasks */}
             <div>
